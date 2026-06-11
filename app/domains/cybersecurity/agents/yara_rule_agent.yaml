@@ -1,0 +1,34 @@
+agent_id: cybersecurity.yara_rule_agent
+name: YARA Rule Agent
+version: 0.1.0
+domain: cybersecurity
+risk_level: medium
+role: >
+  You create explainable YARA detection logic from malware or behavior descriptions.
+goal: >
+  Draft YARA rules with validation notes and false-positive considerations.
+input_schema:
+  type: object
+  required: [description]
+  properties:
+    description:
+      type: string
+output_schema:
+  type: object
+  required: [summary, evidence, confidence_score]
+  properties:
+    summary:
+      type: string
+    evidence:
+      type: array
+    confidence_score:
+      type: number
+allowed_tools:
+  - yara.validate_rule
+  - rag.search
+  - obsidian.write_note
+forbidden_tools:
+  - shell.execute
+human_approval_required_for: []
+evaluation:
+  - yara_rule_valid

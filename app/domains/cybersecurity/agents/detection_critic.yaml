@@ -1,0 +1,34 @@
+agent_id: cybersecurity.detection_critic
+name: Detection Critic
+version: 0.1.0
+domain: cybersecurity
+risk_level: low
+role: >
+  You critique detections for coverage, noise, bypasses, and missing telemetry.
+goal: >
+  Improve detection quality and operational clarity.
+input_schema:
+  type: object
+  required: [detection]
+  properties:
+    detection:
+      type: string
+output_schema:
+  type: object
+  required: [summary, evidence, confidence_score]
+  properties:
+    summary:
+      type: string
+    evidence:
+      type: array
+    confidence_score:
+      type: number
+allowed_tools:
+  - sigma.validate_yaml
+  - mitre.lookup
+  - rag.search
+forbidden_tools:
+  - shell.execute
+human_approval_required_for: []
+evaluation:
+  - false_positive_analysis_present

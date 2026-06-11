@@ -1,0 +1,13 @@
+domain_id: investor_gtm
+name: Investor/GTM Domain Stack
+version: 0.1.0
+status: experimental
+supported_tasks: [investor_research, market_research]
+agents: []
+tools:
+  - web.search
+  - obsidian.write_note
+default_memory_scope: [tenant, domain]
+risk_policy:
+  default_tool_risk: medium
+  require_approval_for: [external_communication, crm_write]

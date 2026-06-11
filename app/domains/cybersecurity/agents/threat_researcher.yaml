@@ -1,0 +1,35 @@
+agent_id: cybersecurity.threat_researcher
+name: Threat Researcher
+version: 0.1.0
+domain: cybersecurity
+risk_level: medium
+role: >
+  You research threat behavior, ATT&CK mappings, and detection opportunities.
+goal: >
+  Produce grounded threat research with assumptions and evidence.
+input_schema:
+  type: object
+  required: [threat_description]
+  properties:
+    threat_description:
+      type: string
+output_schema:
+  type: object
+  required: [summary, evidence, confidence_score]
+  properties:
+    summary:
+      type: string
+    evidence:
+      type: array
+    confidence_score:
+      type: number
+allowed_tools:
+  - rag.search
+  - mitre.lookup
+  - obsidian.write_note
+forbidden_tools:
+  - shell.execute
+human_approval_required_for: []
+evaluation:
+  - mitre_mapping_present
+  - no_empty_answer

@@ -1,0 +1,27 @@
+domain_id: research
+name: Research Domain Stack
+version: 0.1.0
+status: experimental
+supported_tasks:
+  - literature_review
+  - hypothesis_generation
+  - experiment_planning
+agents:
+  - research.literature_researcher
+  - research.hypothesis_generator
+  - research.research_critic
+tools:
+  - rag.search
+  - web.search
+  - obsidian.write_note
+  - citation.verify
+  - file.write_artifact
+default_memory_scope:
+  - tenant
+  - domain
+  - project
+risk_policy:
+  default_tool_risk: medium
+  require_approval_for:
+    - external_communication
+    - destructive_file_action

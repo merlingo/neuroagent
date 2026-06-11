@@ -1,0 +1,31 @@
+domain_id: cybersecurity
+name: Cybersecurity Domain Stack
+version: 0.1.0
+status: experimental
+supported_tasks:
+  - threat_research
+  - sigma_rule_generation
+  - yara_rule_generation
+  - detection_critique
+agents:
+  - cybersecurity.threat_researcher
+  - cybersecurity.sigma_rule_agent
+  - cybersecurity.yara_rule_agent
+  - cybersecurity.detection_critic
+tools:
+  - rag.search
+  - mitre.lookup
+  - sigma.validate_yaml
+  - yara.validate_rule
+  - obsidian.write_note
+  - file.write_artifact
+default_memory_scope:
+  - tenant
+  - domain
+  - project
+risk_policy:
+  default_tool_risk: medium
+  require_approval_for:
+    - production_deployment
+    - external_communication
+    - destructive_file_action

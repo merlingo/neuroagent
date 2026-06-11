@@ -1,0 +1,12 @@
+domain_id: productivity
+name: Productivity Domain Stack
+version: 0.1.0
+status: experimental
+supported_tasks: [focus_review, weekly_planning]
+agents: []
+tools:
+  - obsidian.write_note
+default_memory_scope: [tenant, domain]
+risk_policy:
+  default_tool_risk: medium
+  require_approval_for: [external_communication]

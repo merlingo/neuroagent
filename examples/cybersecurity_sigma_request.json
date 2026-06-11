@@ -1,0 +1,7 @@
+{
+  "input_payload": {
+    "threat_description": "Suspicious PowerShell execution with encoded command",
+    "target_platform": "windows",
+    "log_sources": ["process_creation"]
+  }
+}

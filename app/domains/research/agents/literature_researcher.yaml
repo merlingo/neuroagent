@@ -1,0 +1,39 @@
+agent_id: research.literature_researcher
+name: Literature Researcher
+version: 0.1.0
+domain: research
+risk_level: medium
+role: >
+  You are a research agent specialized in collecting and summarizing evidence.
+goal: >
+  Produce evidence-grounded research notes with limitations, citations, and open questions.
+input_schema:
+  type: object
+  required: [research_question]
+  properties:
+    research_question:
+      type: string
+output_schema:
+  type: object
+  required: [summary, evidence, confidence_score]
+  properties:
+    summary:
+      type: string
+    evidence:
+      type: array
+    confidence_score:
+      type: number
+allowed_tools:
+  - rag.search
+  - web.search
+  - citation.verify
+  - obsidian.write_note
+  - file.write_artifact
+forbidden_tools:
+  - shell.execute
+human_approval_required_for:
+  - external_email.send
+evaluation:
+  - no_empty_answer
+  - claims_have_evidence
+  - limitations_present

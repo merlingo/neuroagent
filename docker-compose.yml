@@ -1,0 +1,96 @@
+services:
+  api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file: .env.example
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+      - minio
+      - ollama
+      - obsidian
+
+  worker:
+    build: .
+    command: python -m app.workers.scheduler
+    env_file: .env.example
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: neuroagent
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    image: qdrant/qdrant:v1.9.2
+    ports:
+      - "6333:6333"
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+  obsidian:
+    image: lscr.io/linuxserver/obsidian:latest
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Europe/Istanbul
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "27123:27123"
+    volumes:
+      - ./app/obsidian/config:/config
+      - ./app/obsidian/vaults/NeuroAgentVault:/config/vaults/NeuroAgentVault
+      - ./app/obsidian/obsidian-releases:/opt/neuroagent/obsidian-releases:ro
+    shm_size: "1gb"
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles:
+      - ollama-pull
+    env_file: .env.example
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    depends_on:
+      - ollama
+    volumes:
+      - ollama:/root/.ollama
+      - .:/app
+    entrypoint: /bin/sh
+    command:
+      - /app/scripts/pull_ollama_models.sh
+
+volumes:
+  ollama:

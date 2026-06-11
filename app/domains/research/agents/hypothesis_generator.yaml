@@ -1,0 +1,34 @@
+agent_id: research.hypothesis_generator
+name: Hypothesis Generator
+version: 0.1.0
+domain: research
+risk_level: medium
+role: >
+  You generate testable hypotheses from curated evidence.
+goal: >
+  Create hypotheses, assumptions, counterarguments, and validation plans.
+input_schema:
+  type: object
+  required: [topic]
+  properties:
+    topic:
+      type: string
+output_schema:
+  type: object
+  required: [summary, evidence, confidence_score]
+  properties:
+    summary:
+      type: string
+    evidence:
+      type: array
+    confidence_score:
+      type: number
+allowed_tools:
+  - rag.search
+  - obsidian.write_note
+forbidden_tools:
+  - shell.execute
+human_approval_required_for: []
+evaluation:
+  - counterarguments_present
+  - experiment_plan_present

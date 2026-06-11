@@ -1,0 +1,145 @@
+tools:
+  - tool_id: local.echo
+    name: Local Echo
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: file.write_artifact
+    name: File Artifact Writer
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: file.read_file
+    name: File Reader
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: file.write_file
+    name: File Writer
+    version: 0.1.0
+    risk_level: medium
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: file.update_file
+    name: File Updater
+    version: 0.1.0
+    risk_level: medium
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: file.delete_file
+    name: File Deleter
+    version: 0.1.0
+    risk_level: high
+    requires_approval: true
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: obsidian.write_note
+    name: Obsidian Write Note
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: rag.search
+    name: RAG Search
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity]
+  - tool_id: rag.ingest_document
+    name: RAG Ingest Document
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity]
+  - tool_id: rag.index_document
+    name: RAG Index Document
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity]
+  - tool_id: rag.delete_document_vectors
+    name: RAG Delete Document Vectors
+    version: 0.1.0
+    risk_level: medium
+    requires_approval: true
+    allowed_domains: [research, cybersecurity]
+  - tool_id: web.search
+    name: Web Search
+    version: 0.1.0
+    risk_level: medium
+    requires_approval: false
+    allowed_domains: [research, investor_gtm]
+  - tool_id: citation.verify
+    name: Citation Verifier
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research]
+  - tool_id: sigma.validate_yaml
+    name: Sigma YAML Validator
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [cybersecurity]
+  - tool_id: yara.validate_rule
+    name: YARA Rule Validator
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [cybersecurity]
+  - tool_id: mitre.lookup
+    name: MITRE Lookup
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [cybersecurity]
+  - tool_id: github.get_repo
+    name: GitHub Get Repository
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: github.get_issue
+    name: GitHub Get Issue
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: github.list_issues
+    name: GitHub List Issues
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: github.create_issue
+    name: GitHub Create Issue
+    version: 0.1.0
+    risk_level: medium
+    requires_approval: true
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: github.create_issue_comment
+    name: GitHub Create Issue Comment
+    version: 0.1.0
+    risk_level: medium
+    requires_approval: true
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: github.get_file
+    name: GitHub Get File
+    version: 0.1.0
+    risk_level: low
+    requires_approval: false
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: github.update_file
+    name: GitHub Update File
+    version: 0.1.0
+    risk_level: high
+    requires_approval: true
+    allowed_domains: [research, cybersecurity, productivity, investor_gtm]
+  - tool_id: shell.execute
+    name: Shell Execute
+    version: 0.1.0
+    risk_level: high
+    requires_approval: true
+    allowed_domains: []
