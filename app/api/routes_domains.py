@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from app.core.errors import ContractNotFoundError
-from app.dependencies import get_domain_registry
+from app.dependencies import get_domain_registry, _BUILTIN_DOMAINS
 from app.settings import get_settings
 
 router = APIRouter(prefix="/domains", tags=["domains"])
@@ -26,26 +26,29 @@ def get_domain(domain_id: str) -> dict:
 def reload_domain(domain_id: str) -> dict:
     registry = get_domain_registry()
     settings = get_settings()
-    contracts_dir = Path(settings.contracts_dir)
 
-    # Try loading from disk — either the domain already exists in registry or not
-    domain_dir = contracts_dir / domain_id
-    if not domain_dir.is_dir():
-        # Check if already in registry (reload existing)
+    # Search for the domain directory: CONTRACTS_DIR first, then built-in app/domains
+    candidates = [
+        Path(settings.contracts_dir) / domain_id,
+        _BUILTIN_DOMAINS / domain_id,
+    ]
+    domain_dir = next((c for c in candidates if c.is_dir()), None)
+
+    if domain_dir is None:
+        # Not on disk — return from registry if already loaded
         try:
             domain = registry.get_domain(domain_id)
-            return {"status": "reloaded", "domain_id": domain_id, "domain": domain.model_dump()}
+            agents = [a.agent_id for a in registry.list_agents() if a.domain == domain_id]
+            return {"status": "already_loaded", "domain_id": domain_id, "domain": domain.model_dump(), "agents_loaded": agents}
         except ContractNotFoundError:
             raise HTTPException(
                 status_code=404,
-                detail=f"Domain '{domain_id}' not found in registry or on disk at {domain_dir}",
+                detail=f"Domain '{domain_id}' not found on disk (checked: {[str(c) for c in candidates]})",
             )
 
-    # Load (or reload) from YAML on disk
+    # Load (or reload) from the found directory
     try:
         domain = registry.load_domain_from_directory(domain_dir)
-    except ContractNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=400,
