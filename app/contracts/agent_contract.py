@@ -15,6 +15,8 @@ class JsonSchema(BaseModel):
 
 
 class AgentContract(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     agent_id: str
     name: str
     version: str

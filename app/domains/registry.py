@@ -52,27 +52,54 @@ class DomainRegistry:
         The directory must contain a domain.yaml file. Agent YAMLs are loaded
         from an 'agents/' subdirectory if present, or from *.yaml files in the
         domain directory itself (excluding domain.yaml).
+
+        Missing required fields are filled with sensible defaults derived from
+        directory/file names so that externally-written YAMLs (e.g. from
+        Intravision's ContractsWriterService) work without strict adherence
+        to the full contract schema.
         """
+        domain_id = domain_dir.name
         manifest = domain_dir / "domain.yaml"
-        if not manifest.exists():
-            raise ContractNotFoundError(
-                f"Domain manifest not found at {manifest}"
-            )
-        domain = DomainContract.model_validate(yaml.safe_load(manifest.read_text()))
+        if manifest.exists():
+            raw = yaml.safe_load(manifest.read_text()) or {}
+        else:
+            # No domain.yaml — synthesize a minimal domain from directory name
+            raw = {}
+        # Fill defaults for required DomainContract fields
+        raw.setdefault("domain_id", domain_id)
+        raw.setdefault("name", domain_id)
+        raw.setdefault("version", "1.0.0")
+        domain = DomainContract.model_validate(raw)
         self.domains[domain.domain_id] = domain
 
-        # Load agents from agents/ subdirectory (standard layout)
+        # Collect agent YAML files
+        agent_files: list[Path] = []
         agents_dir = domain_dir / "agents"
         if agents_dir.is_dir():
-            for agent_file in sorted(agents_dir.glob("*.yaml")):
-                agent = AgentContract.model_validate(yaml.safe_load(agent_file.read_text()))
-                self.agents[agent.agent_id] = agent
+            agent_files = sorted(agents_dir.glob("*.yaml"))
         else:
-            # Fallback: load *.yaml files in domain dir (excluding domain.yaml)
-            for agent_file in sorted(domain_dir.glob("*.yaml")):
-                if agent_file.name == "domain.yaml":
-                    continue
-                agent = AgentContract.model_validate(yaml.safe_load(agent_file.read_text()))
-                self.agents[agent.agent_id] = agent
+            agent_files = sorted(
+                f for f in domain_dir.glob("*.yaml") if f.name != "domain.yaml"
+            )
+
+        for agent_file in agent_files:
+            try:
+                raw_agent = yaml.safe_load(agent_file.read_text()) or {}
+            except Exception:
+                continue  # Skip unparseable YAML files
+            if not isinstance(raw_agent, dict):
+                continue
+            # Fill defaults for required AgentContract fields
+            file_stem = agent_file.stem
+            raw_agent.setdefault("agent_id", f"{domain_id}.{file_stem}")
+            raw_agent.setdefault("name", raw_agent["agent_id"])
+            raw_agent.setdefault("version", "1.0.0")
+            raw_agent.setdefault("domain", domain_id)
+            raw_agent.setdefault("role", raw_agent.get("description", "agent"))
+            raw_agent.setdefault("goal", raw_agent.get("description", "execute tasks"))
+            raw_agent.setdefault("input_schema", {"type": "object", "properties": {}, "required": []})
+            raw_agent.setdefault("output_schema", {"type": "object", "properties": {}, "required": []})
+            agent = AgentContract.model_validate(raw_agent)
+            self.agents[agent.agent_id] = agent
 
         return domain

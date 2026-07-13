@@ -1,14 +1,18 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RiskPolicy(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     default_tool_risk: Literal["low", "medium", "high", "critical"] = "medium"
     require_approval_for: list[str] = Field(default_factory=list)
 
 
 class DomainContract(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     domain_id: str
     name: str
     version: str
