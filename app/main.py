@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api import (
@@ -15,12 +17,20 @@ from app.api import (
     routes_tools,
     routes_use_cases,
 )
+from app.dependencies import get_domain_registry
 from app.settings import get_settings
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Pre-load domain registry from CONTRACTS_DIR so domains are immediately available
+    get_domain_registry()
+    yield
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title=settings.app_name, version="0.2.0", debug=settings.app_debug)
+    app = FastAPI(title=settings.app_name, version="0.2.0", debug=settings.app_debug, lifespan=lifespan)
 
     @app.get("/health", tags=["health"])
     def health() -> dict[str, str]:
