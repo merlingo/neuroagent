@@ -11,7 +11,11 @@ def get_engine():
     settings = get_settings()
     if not settings.database_url:
         raise RuntimeError("DATABASE_URL is required for the SQLAlchemy repository")
-    return create_engine(settings.database_url)
+    url = settings.database_url
+    # psycopg3 (psycopg[binary]) requires postgresql+psycopg:// dialect prefix
+    if url.startswith("postgresql://") or url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+psycopg://", 1)
+    return create_engine(url)
 
 
 def get_session_local():
