@@ -6,6 +6,7 @@ from app.api import (
     routes_autoresearch,
     routes_documents,
     routes_domains,
+    routes_evaluate,
     routes_evals,
     routes_models,
     routes_obsidian,
@@ -19,7 +20,7 @@ from app.settings import get_settings
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title=settings.app_name, version="0.1.0", debug=settings.app_debug)
+    app = FastAPI(title=settings.app_name, version="0.2.0", debug=settings.app_debug)
 
     @app.get("/health", tags=["health"])
     def health() -> dict[str, str]:
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_models.router)
     app.include_router(routes_obsidian.router)
     app.include_router(routes_evals.router)
+    app.include_router(routes_evaluate.router)
     app.include_router(routes_use_cases.router)
     app.include_router(routes_storage.router)
     return app

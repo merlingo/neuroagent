@@ -84,4 +84,78 @@ docker compose up obsidian
 The web UI is exposed on `http://127.0.0.1:3000`. The mounted vault lives at
 `app/obsidian/vaults/NeuroAgentVault`.
 
+## Loop Engineering Integration
+
+NeuroAgent exposes request/response capabilities for Intravision's Loop Engineering feature — a durable meta-orchestration layer that runs many sequential agent iterations toward a long-term goal.
+
+### Per-request model override
+
+Pass `"model": "gpt-4.1-mini"` in the run request. Validated against `NEUROAGENT_ALLOWED_MODELS` (comma-separated env var). Unknown models return 422.
+
+### Structured run result
+
+Every run response includes a `result` object:
+
+```json
+{
+  "status": "completed | max_steps | max_tokens | error",
+  "final_answer": "...",
+  "summary": "3-5 sentence model-generated summary",
+  "artifacts": [{"type": "...", "ref": "...", "description": "..."}],
+  "tool_calls": [{"tool": "...", "count": 1}],
+  "usage": {"prompt_tokens": 100, "completion_tokens": 50, "steps": 3}
+}
+```
+
+### Loop context injection
+
+Pass `loop_context` in the run request to inject goal, state document, and prior summaries into the system prompt:
+
+```json
+{
+  "loop_context": {
+    "loop_id": "loop-abc",
+    "iteration_index": 3,
+    "goal": "Fix the auth bug",
+    "state_document": "...",
+    "prior_summaries": ["Iteration 1: ...", "Iteration 2: ..."]
+  }
+}
+```
+
+`loop_id` and `iteration_index` are echoed back in the response for correlation.
+
+### Per-request budgets
+
+Pass `max_steps` and/or `max_tokens` to override env defaults. On breach, the run terminates gracefully with `result.status` set to `"max_steps"` or `"max_tokens"`.
+
+### Critic endpoint
+
+`POST /v1/evaluate` — single LLM call that evaluates iteration progress:
+
+```json
+{
+  "goal": "...",
+  "state_document": "...",
+  "iteration_summary": "...",
+  "recent_verdicts": ["..."]
+}
+```
+
+Returns `{ progress, confidence, stall_signals, recommendation, reasoning }`.
+
+### Idempotency
+
+Pass `client_run_id` in the run request. Duplicates within 10 minutes return 409.
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEUROAGENT_ALLOWED_MODELS` | (empty) | Comma-separated model allowlist |
+| `NEUROAGENT_LOOP_CONTEXT_MAX_CHARS` | 24000 | Max chars for injected loop context |
+| `NEUROAGENT_CRITIC_MODEL` | gpt-4.1-mini | Model used for summaries and /v1/evaluate |
+| `NEUROAGENT_DEFAULT_MAX_STEPS` | 20 | Default step budget per run |
+| `NEUROAGENT_DEFAULT_MAX_TOKENS` | 100000 | Default token budget per run |
+
 # neuroagent

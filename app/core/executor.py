@@ -3,6 +3,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.contracts.agent_contract import AgentContract
+from app.contracts.loop_contract import LoopContext
 from app.contracts.workflow_contract import ExecutionPlan, WorkflowStep
 from app.model_gateway import ModelGateway, StubModelGateway
 from app.tools.executor import ToolExecutor
@@ -13,7 +14,18 @@ class StepExecutor:
         self.tool_executor = tool_executor
         self.model_gateway = model_gateway or StubModelGateway()
 
-    def execute(self, run_id: str, agent: AgentContract, plan: ExecutionPlan, payload: dict[str, Any]) -> dict:
+    def execute(
+        self,
+        run_id: str,
+        agent: AgentContract,
+        plan: ExecutionPlan,
+        payload: dict[str, Any],
+        *,
+        model_override: str | None = None,
+        loop_context: LoopContext | None = None,
+        max_steps: int | None = None,
+        max_tokens: int | None = None,
+    ) -> dict:
         steps: list[dict] = []
         tool_calls: list[dict] = []
         step_outputs: dict[str, Any] = {}
@@ -23,7 +35,34 @@ class StepExecutor:
         cost_estimate = 0.0
         model: str | None = None
 
+        cumulative_tokens = 0
+
         for index, step in enumerate(plan.steps):
+            # Budget enforcement: max_steps
+            if max_steps is not None and index >= max_steps:
+                return {
+                    "status": "max_steps",
+                    "error_message": None,
+                    "steps": steps,
+                    "tool_calls": tool_calls,
+                    "final_output": final_output,
+                    "token_usage": token_usage,
+                    "cost_estimate": cost_estimate,
+                    "model": model,
+                }
+            # Budget enforcement: max_tokens
+            if max_tokens is not None and cumulative_tokens >= max_tokens:
+                return {
+                    "status": "max_tokens",
+                    "error_message": None,
+                    "steps": steps,
+                    "tool_calls": tool_calls,
+                    "final_output": final_output,
+                    "token_usage": token_usage,
+                    "cost_estimate": cost_estimate,
+                    "model": model,
+                }
+
             started_at = datetime.now(UTC).isoformat()
             trace_input = self._build_trace_input(step, payload, step_outputs)
             status = "completed"
@@ -45,11 +84,15 @@ class StepExecutor:
                     if result.get("approval_status") == "pending":
                         status = "pending_approval"
                 elif step.type == "agent_reasoning" and self._is_final_output_step(step):
-                    model_response = self.model_gateway.complete(agent, plan, payload, findings)
+                    model_response = self.model_gateway.complete(
+                        agent, plan, payload, findings,
+                        model_override=model_override, loop_context=loop_context,
+                    )
                     final_output = model_response.content
                     token_usage = model_response.token_usage
                     cost_estimate = model_response.cost_estimate
                     model = model_response.model
+                    cumulative_tokens += token_usage.get("prompt_tokens", 0) + token_usage.get("completion_tokens", 0)
                     output = {
                         "final_output": final_output,
                         "token_usage": token_usage,
@@ -96,7 +139,10 @@ class StepExecutor:
                 }
 
         if final_output is None:
-            model_response = self.model_gateway.complete(agent, plan, payload, findings)
+            model_response = self.model_gateway.complete(
+                agent, plan, payload, findings,
+                model_override=model_override, loop_context=loop_context,
+            )
             final_output = model_response.content
             token_usage = model_response.token_usage
             cost_estimate = model_response.cost_estimate

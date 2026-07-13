@@ -8,6 +8,7 @@ from typing import Any, Protocol
 import httpx
 
 from app.contracts.agent_contract import AgentContract
+from app.contracts.loop_contract import LoopContext
 from app.contracts.workflow_contract import ExecutionPlan
 from app.settings import Settings, get_settings
 
@@ -27,6 +28,9 @@ class ModelGateway(Protocol):
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        *,
+        model_override: str | None = None,
+        loop_context: LoopContext | None = None,
     ) -> ModelResponse:
         ...
 
@@ -57,17 +61,51 @@ def _extract_json(text: str) -> dict[str, Any]:
     return value
 
 
+def _build_loop_context_section(loop_context: LoopContext, max_chars: int) -> str:
+    header = f"## Loop context (iteration {loop_context.iteration_index})\n\n"
+    goal_section = f"**Goal:** {loop_context.goal}\n\n"
+    state_section = f"**State document:**\n{loop_context.state_document}\n\n"
+
+    base = header + goal_section + state_section
+    remaining = max_chars - len(base)
+
+    if remaining <= 0 or not loop_context.prior_summaries:
+        return base
+
+    summaries_header = "**Prior iteration summaries:**\n"
+    remaining -= len(summaries_header)
+
+    # Include summaries newest-first priority (truncate oldest first)
+    included: list[str] = []
+    for summary in reversed(loop_context.prior_summaries):
+        entry = f"- {summary}\n"
+        if remaining - len(entry) < 0:
+            break
+        included.append(entry)
+        remaining -= len(entry)
+
+    if not included:
+        return base
+
+    included.reverse()
+    return base + summaries_header + "".join(included)
+
+
 def _build_prompt(
     agent: AgentContract,
     plan: ExecutionPlan,
     input_payload: dict[str, Any],
     findings: list[str],
+    loop_context: LoopContext | None = None,
+    loop_context_max_chars: int = 24000,
 ) -> list[dict[str, str]]:
     system = (
         "You are executing a governed NeuroAgent run. "
         "Return only one JSON object that satisfies the provided output schema. "
         "Do not wrap the JSON in markdown and do not include commentary outside JSON."
     )
+    if loop_context is not None:
+        system += "\n\n" + _build_loop_context_section(loop_context, loop_context_max_chars)
     user = {
         "agent": {
             "id": agent.agent_id,
@@ -105,6 +143,9 @@ class StubModelGateway:
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        *,
+        model_override: str | None = None,
+        loop_context: LoopContext | None = None,
     ) -> ModelResponse:
         output: dict[str, Any] = {
             "summary": f"{agent.name} completed a governed stub run.",
@@ -150,10 +191,13 @@ class OpenAIResponsesGateway:
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        *,
+        model_override: str | None = None,
+        loop_context: LoopContext | None = None,
     ) -> ModelResponse:
-        messages = _build_prompt(agent, plan, input_payload, findings)
+        messages = _build_prompt(agent, plan, input_payload, findings, loop_context, self.settings.neuroagent_loop_context_max_chars)
         payload = {
-            "model": self.model,
+            "model": model_override or self.model,
             "input": messages,
             "temperature": self.settings.model_temperature,
             "max_output_tokens": self.settings.model_max_tokens,
@@ -219,10 +263,13 @@ class OpenAICompatibleChatGateway:
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        *,
+        model_override: str | None = None,
+        loop_context: LoopContext | None = None,
     ) -> ModelResponse:
         payload = {
-            "model": self.model,
-            "messages": _build_prompt(agent, plan, input_payload, findings),
+            "model": model_override or self.model,
+            "messages": _build_prompt(agent, plan, input_payload, findings, loop_context, self.settings.neuroagent_loop_context_max_chars),
             "temperature": self.settings.model_temperature,
             "max_tokens": self.settings.model_max_tokens,
         }
@@ -284,10 +331,13 @@ class AnthropicMessagesGateway:
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        *,
+        model_override: str | None = None,
+        loop_context: LoopContext | None = None,
     ) -> ModelResponse:
-        messages = _build_prompt(agent, plan, input_payload, findings)
+        messages = _build_prompt(agent, plan, input_payload, findings, loop_context, self.settings.neuroagent_loop_context_max_chars)
         payload = {
-            "model": self.model,
+            "model": model_override or self.model,
             "max_tokens": self.settings.model_max_tokens,
             "temperature": self.settings.model_temperature,
             "system": messages[0]["content"],
@@ -338,8 +388,11 @@ class GeminiGenerateContentGateway:
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        *,
+        model_override: str | None = None,
+        loop_context: LoopContext | None = None,
     ) -> ModelResponse:
-        messages = _build_prompt(agent, plan, input_payload, findings)
+        messages = _build_prompt(agent, plan, input_payload, findings, loop_context, self.settings.neuroagent_loop_context_max_chars)
         payload = {
             "systemInstruction": {"parts": [{"text": messages[0]["content"]}]},
             "contents": [{"role": "user", "parts": [{"text": messages[1]["content"]}]}],
@@ -351,7 +404,7 @@ class GeminiGenerateContentGateway:
         }
         try:
             response = httpx.post(
-                f"{self.base_url}/models/{self.model}:generateContent",
+                f"{self.base_url}/models/{model_override or self.model}:generateContent",
                 headers={"x-goog-api-key": self.settings.gemini_api_key},
                 json=payload,
                 timeout=self.settings.model_timeout_seconds,
@@ -374,8 +427,85 @@ class GeminiGenerateContentGateway:
             content=_extract_json(text),
             token_usage=token_usage,
             cost_estimate=_estimate_cost(token_usage),
-            model=self.model,
+            model=model_override or self.model,
         )
+
+
+def complete_simple(system_prompt: str, user_prompt: str, model: str | None = None, settings: Settings | None = None) -> str:
+    """Single LLM call returning raw text. Used for summaries and critic evaluations."""
+    settings = settings or get_settings()
+    provider = settings.model_provider.lower()
+    if provider == "stub":
+        return user_prompt[:200]
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    resolved_model = model or settings.neuroagent_critic_model
+    if provider in {"openai", "chatgpt"}:
+        if not settings.openai_api_key:
+            return ""
+        payload = {
+            "model": resolved_model,
+            "input": messages,
+            "temperature": 0.3,
+            "max_output_tokens": 500,
+        }
+        try:
+            response = httpx.post(
+                f"{settings.openai_base_url.rstrip('/')}/responses",
+                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                json=payload,
+                timeout=settings.model_timeout_seconds,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("output_text") or _response_output_text(data)
+        except Exception:
+            return ""
+    if provider in {"openrouter", "ollama"}:
+        base_url = settings.openrouter_base_url if provider == "openrouter" else settings.ollama_base_url
+        api_key = settings.openrouter_api_key if provider == "openrouter" else "ollama"
+        payload = {"model": resolved_model, "messages": messages, "temperature": 0.3, "max_tokens": 500}
+        try:
+            response = httpx.post(
+                f"{base_url.rstrip('/')}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=settings.model_timeout_seconds,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+        except Exception:
+            return ""
+    if provider in {"anthropic", "claude"}:
+        if not settings.anthropic_api_key:
+            return ""
+        payload = {
+            "model": resolved_model,
+            "max_tokens": 500,
+            "temperature": 0.3,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_prompt}],
+        }
+        try:
+            response = httpx.post(
+                f"{settings.anthropic_base_url.rstrip('/')}/v1/messages",
+                headers={
+                    "x-api-key": settings.anthropic_api_key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=settings.model_timeout_seconds,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return "\n".join(item.get("text", "") for item in data.get("content", []) if item.get("type") == "text")
+        except Exception:
+            return ""
+    return ""
 
 
 def get_model_gateway(settings: Settings | None = None) -> ModelGateway:

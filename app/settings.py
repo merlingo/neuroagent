@@ -74,6 +74,12 @@ class Settings(BaseModel):
     log_level: str = "INFO"
     enable_tracing: bool = True
     project_root: str = Field(default=".")
+    contracts_dir: str = "app/domains"
+    neuroagent_allowed_models: str = ""
+    neuroagent_loop_context_max_chars: int = 24000
+    neuroagent_critic_model: str = "gpt-4.1-mini"
+    neuroagent_default_max_steps: int = 20
+    neuroagent_default_max_tokens: int = 100000
 
 
 @lru_cache
@@ -144,4 +150,10 @@ def get_settings() -> Settings:
         github_timeout_seconds=int(os.getenv("GITHUB_TIMEOUT_SECONDS", "20")),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         enable_tracing=_env_bool("ENABLE_TRACING", True),
+        contracts_dir=os.getenv("CONTRACTS_DIR", "app/domains"),
+        neuroagent_allowed_models=os.getenv("NEUROAGENT_ALLOWED_MODELS", ""),
+        neuroagent_loop_context_max_chars=int(os.getenv("NEUROAGENT_LOOP_CONTEXT_MAX_CHARS", "24000")),
+        neuroagent_critic_model=os.getenv("NEUROAGENT_CRITIC_MODEL", "gpt-4.1-mini"),
+        neuroagent_default_max_steps=int(os.getenv("NEUROAGENT_DEFAULT_MAX_STEPS", "20")),
+        neuroagent_default_max_tokens=int(os.getenv("NEUROAGENT_DEFAULT_MAX_TOKENS", "100000")),
     )

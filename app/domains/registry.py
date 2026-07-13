@@ -45,3 +45,34 @@ class DomainRegistry:
             return self.agents[agent_id]
         except KeyError as exc:
             raise ContractNotFoundError(f"Agent {agent_id} not found") from exc
+
+    def load_domain_from_directory(self, domain_dir: Path) -> DomainContract:
+        """Load (or reload) a single domain and its agents from a directory.
+
+        The directory must contain a domain.yaml file. Agent YAMLs are loaded
+        from an 'agents/' subdirectory if present, or from *.yaml files in the
+        domain directory itself (excluding domain.yaml).
+        """
+        manifest = domain_dir / "domain.yaml"
+        if not manifest.exists():
+            raise ContractNotFoundError(
+                f"Domain manifest not found at {manifest}"
+            )
+        domain = DomainContract.model_validate(yaml.safe_load(manifest.read_text()))
+        self.domains[domain.domain_id] = domain
+
+        # Load agents from agents/ subdirectory (standard layout)
+        agents_dir = domain_dir / "agents"
+        if agents_dir.is_dir():
+            for agent_file in sorted(agents_dir.glob("*.yaml")):
+                agent = AgentContract.model_validate(yaml.safe_load(agent_file.read_text()))
+                self.agents[agent.agent_id] = agent
+        else:
+            # Fallback: load *.yaml files in domain dir (excluding domain.yaml)
+            for agent_file in sorted(domain_dir.glob("*.yaml")):
+                if agent_file.name == "domain.yaml":
+                    continue
+                agent = AgentContract.model_validate(yaml.safe_load(agent_file.read_text()))
+                self.agents[agent.agent_id] = agent
+
+        return domain

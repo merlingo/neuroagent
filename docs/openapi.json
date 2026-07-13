@@ -1889,6 +1889,43 @@
           }
         }
       }
+    },
+    "/v1/evaluate": {
+      "post": {
+        "tags": [
+          "evaluate"
+        ],
+        "summary": "Evaluate iteration progress (critic endpoint for loop engineering)",
+        "operationId": "evaluate_v1_evaluate_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error"
+          },
+          "502": {
+            "description": "Critic model returned malformed output"
+          }
+        }
+      }
     }
   },
   "components": {

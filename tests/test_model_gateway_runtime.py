@@ -16,6 +16,7 @@ class InvalidOutputGateway:
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        **kwargs: Any,
     ) -> ModelResponse:
         return ModelResponse(
             content={"summary": "missing required fields"},

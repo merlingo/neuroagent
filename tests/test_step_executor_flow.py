@@ -19,6 +19,7 @@ class CountingGateway:
         plan: ExecutionPlan,
         input_payload: dict[str, Any],
         findings: list[str],
+        **kwargs: Any,
     ) -> ModelResponse:
         self.calls += 1
         return ModelResponse(
