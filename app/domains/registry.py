@@ -93,7 +93,7 @@ class DomainRegistry:
             file_stem = agent_file.stem
             raw_agent.setdefault("agent_id", f"{domain_id}.{file_stem}")
             raw_agent.setdefault("name", raw_agent["agent_id"])
-            raw_agent.setdefault("version", "1.0.0")
+            raw_agent["version"] = str(raw_agent.get("version", "1.0.0"))  # coerce int→str
             raw_agent.setdefault("domain", domain_id)
             raw_agent.setdefault("role", raw_agent.get("description", "agent"))
             raw_agent.setdefault("goal", raw_agent.get("description", "execute tasks"))

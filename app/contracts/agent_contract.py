@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 RiskLevel = Literal["low", "medium", "high", "critical"]
@@ -21,6 +21,11 @@ class AgentContract(BaseModel):
     name: str
     version: str
     domain: str
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def coerce_version_to_str(cls, v: object) -> str:
+        return str(v)
     risk_level: RiskLevel = "low"
     role: str
     goal: str
