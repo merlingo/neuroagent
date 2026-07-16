@@ -16,6 +16,8 @@ from app.model_gateway import ModelGateway, complete_simple, get_model_gateway
 from app.settings import get_settings
 from app.tools.executor import ToolExecutor
 from app.tools.registry import ToolRegistry
+from app.tools.intravision_tools import build_run_registry
+from app.core.tool_loop import run_tool_loop
 
 logger = logging.getLogger(__name__)
 
@@ -59,15 +61,34 @@ class AgentRuntime:
                 extra={"loop_id": loop_context.loop_id, "iteration_index": loop_context.iteration_index, "run_id": run_id},
             )
 
+        # When Intravision passes host tools for this run, use the dynamic LLM
+        # tool-calling loop so the agent can actually perform actions (create pages,
+        # tasks, ...) instead of the static reasoning-only plan.
+        iv_tools = input_payload.get("_iv_tools")
+        iv_run_id = input_payload.get("_iv_run_id")
+        use_tool_loop = bool(iv_tools) and bool(iv_run_id) and bool(self.settings.intravision_base_url)
+
         execution: dict[str, Any] | None = None
         try:
-            execution = self.executor.execute(
-                run_id, agent, plan, input_payload,
-                model_override=model_override,
-                loop_context=loop_context,
-                max_steps=max_steps,
-                max_tokens=max_tokens,
-            )
+            if use_tool_loop:
+                run_registry = build_run_registry(self.tool_registry, iv_tools, str(iv_run_id), self.settings)
+                execution = run_tool_loop(
+                    agent, input_payload,
+                    ToolExecutor(run_registry, self.repository),
+                    run_id, iv_tools,
+                    model_override=model_override,
+                    max_steps=max_steps or self.settings.neuroagent_default_max_steps,
+                    max_tokens=max_tokens,
+                    settings=self.settings,
+                )
+            else:
+                execution = self.executor.execute(
+                    run_id, agent, plan, input_payload,
+                    model_override=model_override,
+                    loop_context=loop_context,
+                    max_steps=max_steps,
+                    max_tokens=max_tokens,
+                )
             status = execution.get("status", "completed")
             error_message = execution.get("error_message")
             if status == "completed":

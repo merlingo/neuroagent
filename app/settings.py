@@ -39,6 +39,9 @@ class Settings(BaseModel):
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openrouter_api_key: str = ""
+    # Intravision host callback (for executing host tools like task/workspace/project).
+    intravision_base_url: str = ""
+    intravision_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_model: str = "openai/gpt-4.1-mini"
     anthropic_api_key: str = ""
@@ -113,6 +116,8 @@ def get_settings() -> Settings:
         model_provider=os.getenv("MODEL_PROVIDER", "stub"),
         default_model=os.getenv("DEFAULT_MODEL", "gpt-4.1-mini"),
         default_embedding_model=os.getenv("DEFAULT_EMBEDDING_MODEL", "text-embedding-3-small"),
+        intravision_base_url=os.getenv("INTRAVISION_BASE_URL", ""),
+        intravision_api_key=os.getenv("INTRAVISION_API_KEY", ""),
         openai_api_key=os.getenv("OPENAI_API_KEY", ""),
         openai_base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
