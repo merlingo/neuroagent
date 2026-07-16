@@ -4,6 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.db.models import Base
+from app.db.session import normalize_db_url
 from app.settings import get_settings
 
 config = context.config
@@ -12,12 +13,16 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Use the psycopg3 dialect for migrations too — the image has no psycopg2, so a
+# bare postgresql:// URL would fail with ModuleNotFoundError: No module named 'psycopg2'.
+db_url = normalize_db_url(settings.database_url)
+# Escape % so ConfigParser interpolation doesn't choke on encoded passwords.
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=settings.database_url,
+        url=db_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

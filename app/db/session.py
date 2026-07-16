@@ -6,19 +6,24 @@ from sqlalchemy.orm import sessionmaker
 from app.settings import get_settings
 
 
+def normalize_db_url(url: str) -> str:
+    """Force the psycopg3 dialect. We ship psycopg[binary] (psycopg3), not psycopg2,
+    so a bare ``postgresql://`` URL (which SQLAlchemy maps to psycopg2) must be
+    rewritten to ``postgresql+psycopg://``. Used by both the app engine and Alembic.
+    ``postgresql://`` does NOT contain ``postgres://`` as a substring, so we slice."""
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://"):]
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url[len("postgres://"):]
+    return url
+
+
 @lru_cache
 def get_engine():
     settings = get_settings()
     if not settings.database_url:
         raise RuntimeError("DATABASE_URL is required for the SQLAlchemy repository")
-    url = settings.database_url
-    # psycopg3 (psycopg[binary]) requires the postgresql+psycopg:// dialect prefix.
-    # "postgresql://" does NOT contain "postgres://" as a substring, so we slice instead.
-    if url.startswith("postgresql://"):
-        url = "postgresql+psycopg://" + url[len("postgresql://"):]
-    elif url.startswith("postgres://"):
-        url = "postgresql+psycopg://" + url[len("postgres://"):]
-    return create_engine(url)
+    return create_engine(normalize_db_url(settings.database_url))
 
 
 def get_session_local():
