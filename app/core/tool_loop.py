@@ -28,17 +28,26 @@ def _estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
     return round((prompt_tokens + completion_tokens) * 0.000001, 6)
 
 
-def _user_prompt(input_payload: dict[str, Any]) -> str:
+def _conversation(input_payload: dict[str, Any]) -> list[dict[str, str]]:
+    """Build the chat history from input_payload.messages, preserving user/assistant
+    roles so multi-turn sessions keep context. Falls back to a single user message."""
     messages = input_payload.get("messages")
-    if isinstance(messages, list) and messages:
-        return "\n\n".join(
-            str(m.get("content", "")) for m in messages if isinstance(m, dict)
-        )
+    convo: list[dict[str, str]] = []
+    if isinstance(messages, list):
+        for m in messages:
+            if not isinstance(m, dict):
+                continue
+            role = m.get("role")
+            content = str(m.get("content", ""))
+            if role in ("user", "assistant") and content:
+                convo.append({"role": role, "content": content})
+    if convo:
+        return convo
     clean = {
         k: v for k, v in input_payload.items()
         if not k.startswith("_iv") and k not in ("tenant_id", "user_id")
     }
-    return json.dumps(clean, ensure_ascii=False)
+    return [{"role": "user", "content": json.dumps(clean, ensure_ascii=False)}]
 
 
 def _system_prompt(agent: AgentContract) -> str:
@@ -110,7 +119,7 @@ def run_tool_loop(
     openai_tools = to_openai_tools(iv_tools)
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": _system_prompt(agent)},
-        {"role": "user", "content": _user_prompt(input_payload)},
+        *_conversation(input_payload),
     ]
 
     steps: list[dict[str, Any]] = []
