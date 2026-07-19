@@ -16,6 +16,7 @@ from app.autoresearcher.schemas import (
 )
 from app.contracts.agent_contract import AgentContract
 from app.contracts.domain_contract import DomainContract
+from app.evals.reports import summarize
 
 
 DEFAULT_MEASUREMENTS = [
@@ -44,7 +45,15 @@ class AutoresearchDomainImprovementPipeline:
     Karpathy's autoresearch: give an agent a compact instruction program,
     constrain what it can edit, run fixed-budget experiments, score measurable
     results, and keep or discard changes based on the metric.
+
+    When constructed with a ``repository`` the ``eval_pass_rate`` measurement is
+    computed from real stored evaluations of the domain's runs instead of the
+    asset-existence proxy. Without one (e.g. planning-only, tests) it falls back
+    to the proxy so behaviour is unchanged.
     """
+
+    def __init__(self, repository: Any | None = None) -> None:
+        self.repository = repository
 
     def plan(
         self,
@@ -210,14 +219,21 @@ class AutoresearchDomainImprovementPipeline:
         root: Path,
     ) -> list[AutoresearchMeasurementResult]:
         validity_score, validity_findings = self.contract_validity_score(snapshots, root)
-        eval_score = self.eval_pass_rate_proxy(snapshots)
         trace_score = self.trace_completeness_score(plan.fixed_context, root)
+
+        real = self.real_eval_pass_rate(plan.domain_id)
+        if real is not None:
+            eval_score, eval_finding = real
+        else:
+            eval_score = self.eval_pass_rate_proxy(snapshots)
+            eval_finding = (
+                "Proxy score based on existing, parseable improvement targets "
+                "(no stored evaluations for this domain yet)."
+            )
+
         scores = {
             "contract_validity": (validity_score, "; ".join(validity_findings)),
-            "eval_pass_rate": (
-                eval_score,
-                "Proxy score based on existing, parseable improvement targets.",
-            ),
+            "eval_pass_rate": (eval_score, eval_finding),
             "trace_completeness": (
                 trace_score,
                 "Fixed runtime context paths are available for review.",
@@ -353,6 +369,29 @@ class AutoresearchDomainImprovementPipeline:
         if target.asset_type in {"prompt_template", "eval_rubric"}:
             if not path.read_text().strip():
                 raise ValueError("asset is empty")
+
+    def real_eval_pass_rate(self, domain_id: str) -> tuple[float, str] | None:
+        """Real eval pass rate for a domain, computed from stored evaluations of
+        its runs. Returns None when no repository is wired or no evaluations exist
+        yet, so the caller can fall back to the proxy."""
+        if self.repository is None:
+            return None
+        try:
+            runs = [run for run in self.repository.list_runs() if run.get("domain_id") == domain_id]
+            evaluations: list[dict[str, Any]] = []
+            for run in runs:
+                evaluations.extend(self.repository.list_run_evaluations(run["id"]))
+        except Exception:
+            return None
+        if not evaluations:
+            return None
+        stats = summarize(evaluations)
+        finding = (
+            f"Real eval pass rate over {stats['total']} evaluation(s) across "
+            f"{len(runs)} run(s): {stats['passed']} passed, {stats['failed']} failed "
+            f"(avg score {stats['average_score']})."
+        )
+        return stats["pass_rate"], finding
 
     def eval_pass_rate_proxy(self, snapshots: list[AutoresearchAssetSnapshot]) -> float:
         if not snapshots:

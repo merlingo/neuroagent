@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 from app.autoresearcher.pipeline import AutoresearchDomainImprovementPipeline
 from app.autoresearcher.schemas import DomainImprovementTarget
+from app.db.repositories import get_repository
 from app.dependencies import get_domain_registry
 
 router = APIRouter(prefix="/autoresearch", tags=["autoresearch"])
@@ -45,7 +46,7 @@ def create_plan(domain_id: str, request: AutoresearchPlanRequest) -> dict:
 def create_improvement_run(domain_id: str, request: AutoresearchPlanRequest) -> dict:
     try:
         get_domain_registry().get_domain(domain_id)
-        run = AutoresearchDomainImprovementPipeline().run_improvement(
+        run = AutoresearchDomainImprovementPipeline(repository=get_repository()).run_improvement(
             domain_id=domain_id,
             targets=request.targets,
             budget_minutes=request.budget_minutes,
