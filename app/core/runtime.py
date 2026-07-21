@@ -68,6 +68,32 @@ class AgentRuntime:
         iv_run_id = input_payload.get("_iv_run_id")
         use_tool_loop = bool(iv_tools) and bool(iv_run_id) and bool(self.settings.intravision_base_url)
 
+        # Pre-insert the agent_run row so tool_calls FK constraint is satisfied
+        # during execution. The row is updated with final results after completion.
+        preliminary_run = {
+            "id": run_id,
+            "tenant_id": input_payload.get("tenant_id", self.settings.default_tenant_id),
+            "user_id": input_payload.get("user_id", "anonymous"),
+            "domain_id": agent.domain,
+            "agent_id": agent.agent_id,
+            "status": "running",
+            "input_payload": input_payload,
+            "resolved_plan": plan.model_dump(),
+            "final_output": None,
+            "error_message": None,
+            "token_usage": {},
+            "cost_estimate": 0.0,
+            "model": None,
+            "started_at": started_at,
+            "completed_at": None,
+            "created_at": started_at,
+            "updated_at": started_at,
+        }
+        if loop_context is not None:
+            preliminary_run["loop_id"] = loop_context.loop_id
+            preliminary_run["iteration_index"] = loop_context.iteration_index
+        self.repository.save_run(preliminary_run)
+
         execution: dict[str, Any] | None = None
         try:
             if use_tool_loop:
