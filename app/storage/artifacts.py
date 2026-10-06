@@ -67,7 +67,7 @@ def prepare_artifact_for_storage(
 
     artifact_id = artifact.get("id", metadata.get("id", "artifact"))
     run_id = artifact.get("run_id", "run")
-    name = _safe_key_part(artifact.get("name", artifact_id))
+    name = _safe_key_part(str(artifact.get("name") or artifact_id))
     key = artifact.get("storage_key") or f"artifacts/{run_id}/{artifact_id}/{name}"
 
     if object_storage is not None:

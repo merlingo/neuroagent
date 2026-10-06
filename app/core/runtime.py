@@ -64,7 +64,12 @@ class AgentRuntime:
         # When Intravision passes host tools for this run, use the dynamic LLM
         # tool-calling loop so the agent can actually perform actions (create pages,
         # tasks, ...) instead of the static reasoning-only plan.
-        iv_tools = input_payload.get("_iv_tools")
+        raw_iv_tools = input_payload.get("_iv_tools")
+        iv_tools: list[dict[str, Any]] = (
+            [tool for tool in raw_iv_tools if isinstance(tool, dict)]
+            if isinstance(raw_iv_tools, list)
+            else []
+        )
         iv_run_id = input_payload.get("_iv_run_id")
         use_tool_loop = bool(iv_tools) and bool(iv_run_id) and bool(self.settings.intravision_base_url)
 

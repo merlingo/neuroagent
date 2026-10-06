@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 from pathlib import Path
 from typing import Callable
 
@@ -78,7 +79,7 @@ class ToolRegistry:
         }
         return cls(contracts)
 
-    def list(self) -> list[ToolContract]:
+    def list(self) -> builtins.list[ToolContract]:
         return sorted(self.contracts.values(), key=lambda item: item.tool_id)
 
     def get(self, tool_id: str) -> ToolContract:
@@ -87,7 +88,7 @@ class ToolRegistry:
         except KeyError as exc:
             raise ContractNotFoundError(f"Tool {tool_id} not found") from exc
 
-    def missing_handlers(self) -> list[str]:
+    def missing_handlers(self) -> builtins.list[str]:
         return sorted(tool_id for tool_id in self.contracts if tool_id not in self.handlers)
 
     def run(self, tool_id: str, payload: dict) -> dict:

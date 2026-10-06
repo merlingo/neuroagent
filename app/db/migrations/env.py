@@ -15,6 +15,8 @@ target_metadata = Base.metadata
 settings = get_settings()
 # Use the psycopg3 dialect for migrations too — the image has no psycopg2, so a
 # bare postgresql:// URL would fail with ModuleNotFoundError: No module named 'psycopg2'.
+if not settings.database_url:
+    raise RuntimeError("DATABASE_URL is required to run database migrations")
 db_url = normalize_db_url(settings.database_url)
 # Escape % so ConfigParser interpolation doesn't choke on encoded passwords.
 config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))

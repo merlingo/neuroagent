@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.autoresearcher.pipeline import AutoresearchDomainImprovementPipeline
 from app.core.runtime import AgentRuntime
-from app.db.repositories import InMemoryRepository
+from app.db.repositories import Repository
 from app.domains.registry import DomainRegistry
 from app.obsidian.note_writer import ObsidianNoteWriter
 from app.rag.ingestion import DocumentIngestor
@@ -115,7 +115,7 @@ USE_CASES: dict[str, UseCaseDefinition] = {
 class UseCaseRunner:
     def __init__(
         self,
-        repository: InMemoryRepository,
+        repository: Repository,
         domain_registry: DomainRegistry,
         tool_registry: ToolRegistry,
         ingestor: DocumentIngestor,

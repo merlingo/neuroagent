@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from app.auth import APIPrincipal, current_principal, require_admin
 from app.db.repositories import get_repository
+from app.db.sqlalchemy_repository import SQLAlchemyRepository
 from app.dependencies import get_app_settings, get_domain_registry, get_tool_registry
 
 router = APIRouter(tags=["storage", "admin"])
@@ -53,7 +54,7 @@ def seed_contracts(principal: APIPrincipal = Depends(require_admin)) -> dict:
     tools = get_tool_registry().list()
     prompts = list(Path("app/prompts/templates").glob("*.md"))
 
-    if repo.__class__.__name__ != "SQLAlchemyRepository":
+    if not isinstance(repo, SQLAlchemyRepository):
         repo.append_audit_log(
             {
                 "action": "seed_contracts",

@@ -115,6 +115,8 @@ def _parse(raw: str) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
     score = value.get("score")
+    if not isinstance(score, (str, int, float)):
+        return None
     try:
         score = float(score)
     except (TypeError, ValueError):

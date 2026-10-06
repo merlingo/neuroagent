@@ -7,10 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.contracts.loop_contract import (
-    EvaluateRequest,
-    EvaluateResponse,
     LoopContext,
-    RunResult,
 )
 from app.core.idempotency import IdempotencyCache
 from app.main import app
@@ -128,7 +125,6 @@ class TestBudgetEnforcement:
         from app.model_gateway import StubModelGateway
         from app.tools.executor import ToolExecutor
         from app.tools.registry import ToolRegistry
-        from app.contracts.tool_contract import ToolContract
         from app.db.repositories import InMemoryRepository as MemoryRepository
 
         tool_registry = ToolRegistry(contracts={})

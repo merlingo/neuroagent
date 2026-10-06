@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "neuroagent-framework",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "paths": {
     "/health": {
@@ -1590,6 +1590,83 @@
         }
       }
     },
+    "/evals/judge/{run_id}": {
+      "post": {
+        "tags": [
+          "evals"
+        ],
+        "summary": "Judge",
+        "description": "Run the LLM-as-judge over a completed run's final output and persist it.",
+        "operationId": "judge_evals_judge__run_id__post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/JudgeRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Judge Evals Judge  Run Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/evals/reports": {
       "get": {
         "tags": [
@@ -1688,6 +1765,66 @@
                     "type": "object"
                   },
                   "title": "Response Get Evals Evals  Run Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evaluate": {
+      "post": {
+        "tags": [
+          "evaluate"
+        ],
+        "summary": "Evaluate",
+        "operationId": "evaluate_v1_evaluate_post",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Evaluate V1 Evaluate Post"
                 }
               }
             }
@@ -1889,43 +2026,6 @@
           }
         }
       }
-    },
-    "/v1/evaluate": {
-      "post": {
-        "tags": [
-          "evaluate"
-        ],
-        "summary": "Evaluate iteration progress (critic endpoint for loop engineering)",
-        "operationId": "evaluate_v1_evaluate_post",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EvaluateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EvaluateResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error"
-          },
-          "502": {
-            "description": "Critic model returned malformed output"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -2042,6 +2142,47 @@
         ],
         "title": "DomainMeasurement"
       },
+      "EvaluateRequest": {
+        "properties": {
+          "goal": {
+            "type": "string",
+            "title": "Goal"
+          },
+          "state_document": {
+            "type": "string",
+            "title": "State Document"
+          },
+          "iteration_summary": {
+            "type": "string",
+            "title": "Iteration Summary"
+          },
+          "recent_verdicts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recent Verdicts"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "goal",
+          "state_document",
+          "iteration_summary"
+        ],
+        "title": "EvaluateRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2147,6 +2288,58 @@
         ],
         "title": "IngestRequest"
       },
+      "JudgeRequest": {
+        "properties": {
+          "rubric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric"
+          }
+        },
+        "type": "object",
+        "title": "JudgeRequest"
+      },
+      "LoopContext": {
+        "properties": {
+          "loop_id": {
+            "type": "string",
+            "title": "Loop Id"
+          },
+          "iteration_index": {
+            "type": "integer",
+            "title": "Iteration Index"
+          },
+          "goal": {
+            "type": "string",
+            "title": "Goal"
+          },
+          "state_document": {
+            "type": "string",
+            "title": "State Document"
+          },
+          "prior_summaries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Prior Summaries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loop_id",
+          "iteration_index",
+          "goal",
+          "state_document"
+        ],
+        "title": "LoopContext"
+      },
       "NoteRequest": {
         "properties": {
           "title": {
@@ -2175,6 +2368,60 @@
           "input_payload": {
             "type": "object",
             "title": "Input Payload"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "loop_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoopContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_steps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Steps"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "client_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Run Id"
           }
         },
         "type": "object",
